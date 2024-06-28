@@ -1,0 +1,101 @@
+﻿@page "/objectives/add"
+@page "/objectives/edit/{id}"
+@using ObjectivesTracker.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<h3>@PageTitle Objective</h3>
+
+<EditForm Model="@objective" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="name">Name</label>
+        <InputText id="name" class="form-control" @bind-Value="@objective.Name" /> 
+        <ValidationMessage For="@(() => objective.Name)" />
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <InputTextArea id="description" class="form-control" @bind-Value="@objective.Description" />
+    </div>
+
+    <div class="form-group">
+        <label for="frequencyType">Frequency</label>
+        <InputSelect id="frequencyType" class="form-control" @bind-Value="@objective.Frequency.Type">
+            @foreach (FrequencyType frequencyType in Enum.GetValues(typeof(FrequencyType)))
+            {
+                <option value="@frequencyType">@frequencyType</option>
+            }
+        </InputSelect>
+    </div>
+
+    @if (objective.Frequency.Type == FrequencyType.Weekly || objective.Frequency.Type == FrequencyType.Monthly)
+    {
+        <div class="form-group">
+            <label for="days">Days</label>
+            <div>
+                @for (int i = 1; i <= (objective.Frequency.Type == FrequencyType.Weekly ? 7 : 31); i++)
+                {
+                    var index = i;
+                    var dayId = $"day-{i}";
+                    var isChecked = IsDaySelected(i); // Local variable for checked state
+
+                    <div class="form-check">
+                        <InputCheckbox class="form-check-input" id="@dayId" @bind-Value="@objective.Frequency[index]" />
+                        <label class="form-check-label" for="@dayId">@i</label>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">@PageTitle</button>
+</EditForm>
+
+@code {
+    [Parameter] public string id { get; set; } = "";
+
+    private Objective objective = new Objective("", "", "", "", new Frequency(FrequencyType.Daily, new List<int>()), new List<CompletionHistoryEntry>());
+    private string PageTitle => string.IsNullOrEmpty(id) ? "Add" : "Edit";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            objective = await Http.GetFromJsonAsync<Objective>($"api/objectives/{id}");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            // For creating a new objective, it may be helpful to re-generate the ID to avoid conflicts
+            objective.Id = Guid.NewGuid().ToString();
+            await Http.PostAsJsonAsync("api/objectives", objective);
+        }
+        else
+        {
+            await Http.PutAsJsonAsync($"api/objectives/{id}", objective);
+        }
+        NavigationManager.NavigateTo("/calendar");
+    }
+
+    private bool IsDaySelected(int day)
+    {
+        return objective.Frequency.Days.Contains(day);
+    }
+
+    private void ToggleDaySelection(int day)
+    {
+        if (objective.Frequency.Days.Contains(day))
+        {
+            objective.Frequency.Days.Remove(day);
+        }
+        else
+        {
+            objective.Frequency.Days.Add(day);
+        }
+    }
+}

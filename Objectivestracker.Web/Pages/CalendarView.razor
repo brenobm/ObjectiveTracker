@@ -1,0 +1,121 @@
+﻿@page "/" 
+@using ObjectivesTracker.Models
+@inject HttpClient Http
+
+<h3>Calendar View</h3>
+
+<div class="container mt-4"> 
+    <div class="row"> 
+        <div class="col-md-12"> 
+            <table class="table table-bordered"> 
+                <thead>
+                    <tr>
+                        @foreach (var dayName in Enum.GetNames(typeof(DayOfWeek)))
+                        {
+                            <th>@dayName</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int week = 0; week < 6; week++) // Max 6 weeks in a month
+                    {
+                        <tr>
+                            @for (int dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++)
+                            {
+                                int dayOfMonth = (week * 7) + dayOfWeek + 1 - firstDayOfWeek;
+                                <td class="@GetDayClass(dayOfMonth)">
+                                    @if (dayOfMonth > 0 && dayOfMonth <= daysInMonth)
+                                    {
+                                        <div class="day-number">@dayOfMonth</div>
+                                        <div class="objectives"> 
+                                            @foreach (var objective in objectives.Where(o => IsObjectiveActiveOn(o, new DateOnly(currentYear, currentMonth, dayOfMonth))))
+                                            {
+                                                <div class="objective">
+                                                    <input type="checkbox" checked="@objective.IsCompletedOn(new DateOnly(currentYear, currentMonth, dayOfMonth))" 
+                                                           @onchange="() => ToggleCompletion(objective, new DateOnly(currentYear, currentMonth, dayOfMonth))" />
+                                                    @objective.Name
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<style>
+.calendar {
+    /* Add any custom calendar styles here */
+}
+.day {
+    text-align: center;
+    padding: 8px;
+}
+
+.day.today {
+    background-color: lightblue;
+}
+
+.day.empty {
+    background-color: #eee;
+}
+
+.day-number {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.objectives {
+    display: flex; /* Allow objectives to wrap */
+    flex-direction: column;
+    align-items: center;
+}
+
+.objective {
+    margin-bottom: 5px;
+}
+</style>
+
+@code {
+    private List<Objective> objectives = new();
+    private int currentYear = DateTime.Now.Year;
+    private int currentMonth = DateTime.Now.Month;
+    private int daysInMonth = DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month);
+    private int firstDayOfWeek = (int)new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).DayOfWeek;
+
+    protected override async Task OnInitializedAsync()
+    {
+        objectives = await Http.GetFromJsonAsync<List<Objective>>("api/objectives/active");
+    }
+
+    private string GetDayClass(int dayOfMonth)
+    {
+        if (dayOfMonth < 1 || dayOfMonth > daysInMonth)
+            return "day empty"; // Outside current month
+        else if (dayOfMonth == DateTime.Now.Day && currentMonth == DateTime.Now.Month && currentYear == DateTime.Now.Year)
+            return "day today"; // Today
+        else
+            return "day";
+    }
+
+    private bool IsObjectiveActiveOn(Objective objective, DateOnly date)
+    {
+        if (objective.Frequency.Type == FrequencyType.Daily) return true;
+        if (objective.Frequency.Type == FrequencyType.Weekly && objective.Frequency.Days.Contains((int)date.DayOfWeek + 1)) return true; // +1 to match Cosmos DB's 1-based day of week
+        if (objective.Frequency.Type == FrequencyType.Monthly && objective.Frequency.Days.Contains(date.Day)) return true;
+        return false;
+    }
+
+    private async Task ToggleCompletion(Objective objective, DateOnly date)
+    {
+        var endpoint = objective.IsCompletedOn(date) ? $"api/objectives/{objective.Id}/incomplete/{date.ToString("yyyy-MM-dd")}" : $"api/objectives/{objective.Id}/complete/{date.ToString("yyyy-MM-dd")}";
+        await Http.PatchAsync(endpoint, null);
+
+        // Assuming your API returns the updated objective, you might want to refresh your data:
+        objectives = await Http.GetFromJsonAsync<List<Objective>>("api/objectives/active");
+    }
+}
