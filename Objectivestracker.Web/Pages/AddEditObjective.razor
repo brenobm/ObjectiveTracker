@@ -79,7 +79,7 @@
         {
             await Http.PutAsJsonAsync($"api/objectives/{id}", objective);
         }
-        NavigationManager.NavigateTo("/calendar");
+        NavigationManager.NavigateTo("/");
     }
 
     private bool IsDaySelected(int day)

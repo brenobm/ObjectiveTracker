@@ -61,7 +61,7 @@ else
         if (confirmResult)
         {
             await Http.DeleteAsync($"api/objectives/{id}");
-            NavigationManager.NavigateTo("/calendar");
+            NavigationManager.NavigateTo("/");
         }
     }
 }

@@ -19,9 +19,9 @@ builder.Services.AddScoped(sp => new HttpClient
 
 builder.Services.AddMsalAuthentication(options =>
 {
-    builder.Configuration.Bind("AzureAdB2C", options.ProviderOptions.Authentication);
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("openid");
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("offline_access"); // For refresh tokens
+    builder.Configuration.Bind("AzureAd", options.ProviderOptions.Authentication);
+    //options.ProviderOptions.DefaultAccessTokenScopes.Add("openid");
+    //options.ProviderOptions.DefaultAccessTokenScopes.Add("offline_access"); // For refresh tokens
 });
 
 
