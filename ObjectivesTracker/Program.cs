@@ -8,7 +8,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins("https://localhost:7128", "http://localhost:5161")
+        builder.WithOrigins("https://localhost:7128", "http://localhost:5161", "https://objectivetrackerweb.azurewebsites.net")
             .AllowAnyMethod()
             .AllowAnyHeader();
     });

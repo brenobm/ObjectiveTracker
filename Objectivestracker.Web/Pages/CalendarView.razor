@@ -8,7 +8,16 @@
     <div class="row"> 
         <div class="col-md-12"> 
             <table class="table table-bordered"> 
-                <thead>
+                <thead>                   
+                    <tr>
+                        <th class="previous">
+                            <button class="btn btn-secondary btn-sm" @onclick="() => PreviousMonth()">&lt;&lt;</button>
+                        </th>
+                        <th colspan="5" class="month"><h2>@monthName / @currentYear</h2></th>
+                        <th class="next">
+                            <button class="btn btn-secondary btn-sm" @onclick="() => NextMonth()">&gt;&gt;</button>
+                        </th>
+                    </tr>
                     <tr>
                         @foreach (var dayName in Enum.GetNames(typeof(DayOfWeek)))
                         {
@@ -51,8 +60,20 @@
 .calendar {
     /* Add any custom calendar styles here */
 }
+.month {
+    text-align: center;
+    padding: 8px;
+}
 .day {
     text-align: center;
+    padding: 8px;
+}
+.previous {
+    text-align: left;
+    padding: 8px;
+}
+.next {
+    text-align: right;
     padding: 8px;
 }
 
@@ -82,14 +103,26 @@
 
 @code {
     private List<Objective> objectives = new();
-    private int currentYear = DateTime.Now.Year;
-    private int currentMonth = DateTime.Now.Month;
-    private int daysInMonth = DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month);
-    private int firstDayOfWeek = (int)new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).DayOfWeek;
+    private int currentYear;
+    private int currentMonth;
+    private int daysInMonth;
+    private int firstDayOfWeek;
+    private string monthName = DateTime.Now.ToString("MMMM");
 
     protected override async Task OnInitializedAsync()
     {
         objectives = await Http.GetFromJsonAsync<List<Objective>>("api/objectives/active");
+        currentYear = DateTime.Now.Year;
+        currentMonth = DateTime.Now.Month;
+        InitializeDays();
+    }
+
+    private void InitializeDays()
+    {
+        var date = new DateTime(currentYear, currentMonth, 1);
+        monthName = date.ToString("MMMM");
+        daysInMonth = DateTime.DaysInMonth(currentYear, currentMonth);
+        firstDayOfWeek = (int)date.DayOfWeek;
     }
 
     private string GetDayClass(int dayOfMonth)
@@ -100,6 +133,38 @@
             return "day today"; // Today
         else
             return "day";
+    }
+
+    private void NextMonth()
+    {
+        if (currentMonth < 12)
+        {
+            currentMonth++;
+        }
+        else
+        {
+            currentMonth = 1;
+            currentYear++;
+        }
+
+        InitializeDays();
+        StateHasChanged();
+    }
+
+    private void PreviousMonth()
+    {
+        if (currentMonth > 1)
+        {
+            currentMonth--;
+        }
+        else
+        {
+            currentMonth = 12;
+            currentYear--;
+        }
+
+        InitializeDays();
+        StateHasChanged();
     }
 
     private bool IsObjectiveActiveOn(Objective objective, DateOnly date)
