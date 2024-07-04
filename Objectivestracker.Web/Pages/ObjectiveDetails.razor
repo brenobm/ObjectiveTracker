@@ -1,8 +1,13 @@
 ﻿@page "/objectives/{id}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using ObjectivesTracker.Models
+@using System.Net.Http.Headers
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject IAccessTokenProvider AccessTokenProvider
+@attribute [Authorize]
 
 @if (objective == null)
 {
@@ -40,6 +45,13 @@ else
     {
         try
         {
+            var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+            if (tokenResult.TryGetToken(out var token))
+            {
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            }
+
             objective = await Http.GetFromJsonAsync<Objective>($"api/objectives/{id}");
         }
         catch (HttpRequestException ex)
@@ -60,6 +72,13 @@ else
         var confirmResult = await JSRuntime.InvokeAsync<bool>("confirm", new object[] { "Are you sure you want to delete this objective?" });
         if (confirmResult)
         {
+            var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+            if (tokenResult.TryGetToken(out var token))
+            {
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            }
+
             await Http.DeleteAsync($"api/objectives/{id}");
             NavigationManager.NavigateTo("/");
         }

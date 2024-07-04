@@ -1,6 +1,11 @@
 ﻿@page "/" 
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using ObjectivesTracker.Models
+@using System.Net.Http.Headers
 @inject HttpClient Http
+@inject IAccessTokenProvider AccessTokenProvider
+@attribute [Authorize]
 
 <h3>Calendar View</h3>
 
@@ -111,6 +116,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        }
+
         objectives = await Http.GetFromJsonAsync<List<Objective>>("api/objectives/active");
         currentYear = DateTime.Now.Year;
         currentMonth = DateTime.Now.Month;
@@ -178,6 +190,14 @@
     private async Task ToggleCompletion(Objective objective, DateOnly date)
     {
         var endpoint = objective.IsCompletedOn(date) ? $"api/objectives/{objective.Id}/incomplete/{date.ToString("yyyy-MM-dd")}" : $"api/objectives/{objective.Id}/complete/{date.ToString("yyyy-MM-dd")}";
+
+        var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        }
+
         await Http.PatchAsync(endpoint, null);
 
         // Assuming your API returns the updated objective, you might want to refresh your data:

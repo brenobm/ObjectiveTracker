@@ -1,8 +1,13 @@
 ﻿@page "/objectives/add"
 @page "/objectives/edit/{id}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using ObjectivesTracker.Models
+@using System.Net.Http.Headers
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@inject IAccessTokenProvider AccessTokenProvider
+@attribute [Authorize]
 
 <h3>@PageTitle Objective</h3>
 
@@ -63,12 +68,26 @@
     {
         if (!string.IsNullOrEmpty(id))
         {
+            var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+            if (tokenResult.TryGetToken(out var token))
+            {
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            }
+
             objective = await Http.GetFromJsonAsync<Objective>($"api/objectives/{id}");
         }
     }
 
     private async Task HandleValidSubmit()
     {
+        var tokenResult = await AccessTokenProvider.RequestAccessToken();
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        }
+
         if (string.IsNullOrEmpty(id))
         {
             // For creating a new objective, it may be helpful to re-generate the ID to avoid conflicts
